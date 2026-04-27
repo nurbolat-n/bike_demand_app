@@ -272,9 +272,9 @@ with col10:
 with col11:
     holiday = st.radio(
         "Public holiday?",
-        options=[0, 1],
+        options=[1, 0],
         horizontal=True,
-        format_func=lambda x: "No" if x == 0 else "Yes"
+        format_func=lambda x: "Yes" if x == 1 else "No"
     )
 
 st.markdown("")  # small spacer
