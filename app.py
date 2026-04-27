@@ -62,13 +62,30 @@ with col1:
     hr = st.slider("🕐 Hour of the day", min_value=0, max_value=23, value=8,
                    help="0 = midnight, 8 = morning, 17 = evening peak")
 
-    season = st.selectbox("🌿 Season", options=[1, 2, 3, 4],
-                          format_func=lambda x: {
-                              1: "Winter (Jan–Mar)",
-                              2: "Spring (Apr–Jun)",
-                              3: "Summer (Jul–Sep)",
-                              4: "Autumn (Oct–Dec)"
-                          }[x])
+    st.markdown("### 🌿 Season")
+
+    col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+    
+    if "season" not in st.session_state:
+        st.session_state.season = 1
+    
+    with col_s1:
+        if st.button("❄️ Winter"):
+            st.session_state.season = 1
+    
+    with col_s2:
+        if st.button("🌸 Spring"):
+            st.session_state.season = 2
+    
+    with col_s3:
+        if st.button("☀️ Summer"):
+            st.session_state.season = 3
+    
+    with col_s4:
+        if st.button("🍂 Autumn"):
+            st.session_state.season = 4
+    
+    season = st.session_state.season
 
     weathersit = st.selectbox("🌤 Weather", options=[1, 2, 3, 4],
                              format_func=lambda x: {
