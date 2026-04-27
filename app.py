@@ -59,7 +59,7 @@ html, body, [class*="css"] {
 
 /* Page background */
 .stApp {
-    background: #0f1117;
+    background: #ffffff;
     color: #e8eaf0;
 }
 
