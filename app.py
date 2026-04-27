@@ -349,11 +349,16 @@ if predict:
             feature_names=feature_names
         )
 
-        plt.style.use('dark_background')
+        plt.style.use('default')
+
         fig, ax = plt.subplots(figsize=(9, 5))
-        fig.patch.set_facecolor('#1a1d27')
+        
+        # светлый фон
+        fig.patch.set_facecolor('#ffffff')
+        ax.set_facecolor('#ffffff')
+        
         shap.plots.waterfall(explanation, max_display=10, show=False)
-        plt.gcf().set_facecolor('#1a1d27')
+        
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
