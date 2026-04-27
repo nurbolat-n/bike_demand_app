@@ -1,3 +1,13 @@
+import streamlit as st
+import joblib
+import numpy as np
+import pandas as pd
+import shap
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from sklearn.base import BaseEstimator, TransformerMixin
+
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Bike Demand Predictor",
