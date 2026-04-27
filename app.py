@@ -6,10 +6,9 @@ import shap
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
-# ── Custom transformers (required for loading the model with joblib) ──────────
 from sklearn.base import BaseEstimator, TransformerMixin
 
+# ── Custom transformers (required for joblib to load the model) ────────────────
 class DropColumns(BaseEstimator, TransformerMixin):
     def __init__(self, columns):
         self.columns = columns
@@ -41,116 +40,284 @@ class CyclicalEncoder(BaseEstimator, TransformerMixin):
                 X = X.drop(columns=[col])
         return X
 
-# ── Load model ────────────────────────────────────────────────────────────────
+# ── Page config ────────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="Bike Demand Predictor",
+    page_icon="🚲",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
+
+# ── Custom CSS ─────────────────────────────────────────────────────────────────
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'DM Sans', sans-serif;
+}
+
+/* Page background */
+.stApp {
+    background: #0f1117;
+    color: #e8eaf0;
+}
+
+/* Main container */
+.block-container {
+    max-width: 760px !important;
+    padding: 2.5rem 2rem 4rem 2rem !important;
+}
+
+/* Header */
+.app-header {
+    text-align: center;
+    padding: 2rem 0 1.5rem 0;
+}
+.app-header h1 {
+    font-size: 2.2rem;
+    font-weight: 600;
+    color: #f0f2f8;
+    letter-spacing: -0.03em;
+    margin: 0;
+}
+.app-header p {
+    font-size: 0.92rem;
+    color: #6b7280;
+    margin: 0.4rem 0 0 0;
+    font-weight: 300;
+}
+
+/* Section labels */
+.section-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #4b9eff;
+    margin: 1.8rem 0 0.8rem 0;
+}
+
+/* Card */
+.card {
+    background: #1a1d27;
+    border: 1px solid #2a2d3a;
+    border-radius: 12px;
+    padding: 1.4rem 1.6rem;
+    margin-bottom: 1rem;
+}
+
+/* Result box */
+.result-box {
+    background: linear-gradient(135deg, #1a2744 0%, #1a1d27 100%);
+    border: 1px solid #2d4a8a;
+    border-radius: 12px;
+    padding: 1.8rem 2rem;
+    text-align: center;
+    margin: 1.2rem 0;
+}
+.result-number {
+    font-family: 'DM Mono', monospace;
+    font-size: 3.5rem;
+    font-weight: 500;
+    color: #4b9eff;
+    line-height: 1;
+}
+.result-unit {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-top: 0.3rem;
+    letter-spacing: 0.05em;
+}
+.result-context {
+    display: inline-block;
+    background: #1f2937;
+    border: 1px solid #374151;
+    border-radius: 20px;
+    padding: 0.3rem 0.9rem;
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-top: 0.8rem;
+}
+
+/* Slider labels */
+.stSlider label {
+    font-size: 0.85rem !important;
+    color: #9ca3af !important;
+    font-weight: 400 !important;
+}
+
+/* Selectbox labels */
+.stSelectbox label {
+    font-size: 0.85rem !important;
+    color: #9ca3af !important;
+    font-weight: 400 !important;
+}
+
+/* Slider track */
+.stSlider [data-baseweb="slider"] {
+    padding-top: 0.3rem !important;
+}
+
+/* Button */
+.stButton > button {
+    background: #4b9eff !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 8px !important;
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    padding: 0.65rem 2rem !important;
+    width: 100% !important;
+    letter-spacing: 0.01em !important;
+    transition: all 0.15s ease !important;
+    margin-top: 0.5rem !important;
+}
+.stButton > button:hover {
+    background: #2563eb !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 20px rgba(75, 158, 255, 0.3) !important;
+}
+
+/* Divider */
+hr {
+    border-color: #2a2d3a !important;
+    margin: 1.5rem 0 !important;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    font-size: 0.73rem;
+    color: #3d4150;
+    padding-top: 2rem;
+    line-height: 1.7;
+}
+
+/* Hide Streamlit branding */
+#MainMenu, footer, header { visibility: hidden; }
+
+/* SHAP plot background */
+.stImage img {
+    border-radius: 8px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ── Model loading ──────────────────────────────────────────────────────────────
 @st.cache_resource
 def load_model():
     return joblib.load('model.pkl')
 
 model = load_model()
 
-# ── UI ────────────────────────────────────────────────────────────────────────
-st.set_page_config(page_title="🚲 Bike Demand Predictor", layout="centered")
-st.title("🚲 Bike Demand Predictor")
-st.markdown("**Hourly bike rental prediction** — Capital Bikeshare, Washington D.C.")
-st.markdown("Select the conditions below and click **Predict**.")
-st.divider()
+# ── Header ─────────────────────────────────────────────────────────────────────
+st.markdown("""
+<div class="app-header">
+    <h1>🚲 Bike Demand Predictor</h1>
+    <p>Hourly rental forecast · Capital Bikeshare, Washington D.C.</p>
+</div>
+""", unsafe_allow_html=True)
 
-# ── Inputs ────────────────────────────────────────────────────────────────────
-col1, col2 = st.columns(2)
-
+# ── Inputs ─────────────────────────────────────────────────────────────────────
+st.markdown('<div class="section-label">Time & Date</div>', unsafe_allow_html=True)
+col1, col2, col3 = st.columns(3)
 with col1:
-    hr = st.slider("🕐 Hour of the day", min_value=0, max_value=23, value=8,
-                   help="0 = midnight, 8 = morning, 17 = evening peak")
-
-    season = st.selectbox("🌿 Season", options=[1, 2, 3, 4],
-                          format_func=lambda x: {
-                              1: "Winter (Jan–Mar)",
-                              2: "Spring (Apr–Jun)",
-                              3: "Summer (Jul–Sep)",
-                              4: "Autumn (Oct–Dec)"
-                          }[x])
-
-    weathersit = st.selectbox("🌤 Weather", options=[1, 2, 3, 4],
-                             format_func=lambda x: {
-                                 1: "Clear / Cloudy",
-                                 2: "Mist",
-                                 3: "Light rain/snow",
-                                 4: "Heavy rain / thunderstorm"
-                             }[x])
-
-    temp = st.slider("🌡 Temperature (normalized)", 0.0, 1.0, 0.5, step=0.01,
-                     help="0 = -8°C, 0.5 = 20°C, 1.0 = 39°C")
-
+    hr = st.slider("Hour of day", 0, 23, 8, help="0 = midnight · 17 = evening peak")
 with col2:
-    yr = st.selectbox("📅 Year", options=[0, 1],
-                      format_func=lambda x: "2011" if x == 0 else "2012")
+    mnth = st.slider("Month", 1, 12, 6)
+with col3:
+    yr = st.selectbox("Year", [0, 1], format_func=lambda x: "2011" if x == 0 else "2012")
 
-    mnth = st.slider("📆 Month", min_value=1, max_value=12, value=6)
+col4, col5 = st.columns(2)
+with col4:
+    weekday = st.selectbox(
+        "Day of week",
+        options=[0, 1, 2, 3, 4, 5, 6],
+        index=1,
+        format_func=lambda x: ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][x]
+    )
+with col5:
+    season = st.selectbox(
+        "Season",
+        options=[1, 2, 3, 4],
+        format_func=lambda x: {1:"Winter (Jan–Mar)", 2:"Spring (Apr–Jun)", 3:"Summer (Jul–Sep)", 4:"Autumn (Oct–Dec)"}[x]
+    )
 
-    workingday = st.radio("💼 Working day?", options=[1, 0],
-                          format_func=lambda x: "Yes" if x == 1 else "No (weekend/holiday)")
+st.markdown('<div class="section-label">Weather Conditions</div>', unsafe_allow_html=True)
+col6, col7 = st.columns(2)
+with col6:
+    weathersit = st.selectbox(
+        "Weather situation",
+        options=[1, 2, 3, 4],
+        format_func=lambda x: {1:"Clear / Partly cloudy", 2:"Mist / Cloudy", 3:"Light rain or snow", 4:"Heavy rain / Thunderstorm"}[x]
+    )
+with col7:
+    temp = st.slider("Temperature (normalised)", 0.0, 1.0, 0.5, step=0.01,
+                     help="0 → −8 °C · 0.5 → 20 °C · 1.0 → 39 °C")
 
-    holiday = st.radio("🎉 Holiday?", options=[0, 1],
-                       format_func=lambda x: "No" if x == 0 else "Yes")
+col8, col9 = st.columns(2)
+with col8:
+    hum = st.slider("Humidity (normalised)", 0.0, 1.0, 0.6, step=0.01)
+with col9:
+    windspeed = st.slider("Wind speed (normalised)", 0.0, 1.0, 0.2, step=0.01)
 
-    hum = st.slider("💧 Humidity (normalized)", 0.0, 1.0, 0.6, step=0.01)
-    windspeed = st.slider("💨 Windspeed (normalized)", 0.0, 1.0, 0.2, step=0.01)
+st.markdown('<div class="section-label">Day Type</div>', unsafe_allow_html=True)
+col10, col11 = st.columns(2)
+with col10:
+    workingday = st.selectbox("Working day?", [1, 0], format_func=lambda x: "Yes" if x == 1 else "No (weekend / holiday)")
+with col11:
+    holiday = st.selectbox("Public holiday?", [0, 1], format_func=lambda x: "No" if x == 0 else "Yes")
 
-weekday = st.select_slider("📅 Day of the week",
-                           options=[0, 1, 2, 3, 4, 5, 6],
-                           value=1,
-                           format_func=lambda x: [
-                               "Sunday", "Monday", "Tuesday",
-                               "Wednesday", "Thursday", "Friday", "Saturday"
-                           ][x])
+st.markdown("")  # small spacer
 
-st.divider()
+# ── Predict button ─────────────────────────────────────────────────────────────
+predict = st.button("Predict demand →", use_container_width=True, type="primary")
 
-# ── Prediction ────────────────────────────────────────────────────────────────
-if st.button("🔮 Predict demand", use_container_width=True, type="primary"):
-
+if predict:
     input_df = pd.DataFrame([{
-        'hr': hr,
-        'season': season,
-        'yr': yr,
-        'mnth': mnth,
-        'holiday': holiday,
+        'hr':         hr,
+        'season':     season,
+        'yr':         yr,
+        'mnth':       mnth,
+        'holiday':    holiday,
         'workingday': workingday,
         'weathersit': weathersit,
-        'temp': temp,
-        'atemp': temp,
-        'hum': hum,
-        'windspeed': windspeed,
-        'weekday': weekday,
+        'temp':       temp,
+        'atemp':      temp,
+        'hum':        hum,
+        'windspeed':  windspeed,
+        'weekday':    weekday,
     }])
 
-    # Log prediction → convert back
     pred_log = model.predict(input_df)[0]
     pred_cnt = int(np.expm1(pred_log))
 
-    # Context
     if workingday == 1 and hr in [7, 8, 9, 17, 18, 19]:
-        context = "🏢 Peak hour — working day"
+        context = "Rush hour · working day"
     elif workingday == 0:
-        context = "🌳 Weekend"
+        context = "Weekend / holiday"
     else:
-        context = "📋 Regular working hours"
+        context = "Regular working hours"
 
-    st.success(f"**Prediction: {pred_cnt} bikes/hour**")
-    st.info(f"Context: {context}")
+    st.markdown(f"""
+    <div class="result-box">
+        <div class="result-number">{pred_cnt}</div>
+        <div class="result-unit">bikes / hour</div>
+        <div class="result-context">{context}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # ── SHAP explanation ─────────────────────────────────────────────────────
-    st.subheader("📊 Why did the model predict this? (SHAP)")
-    st.caption("Each bar shows how a feature increased (+) or decreased (–) the prediction.")
+    # ── SHAP explanation ───────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">Model explanation (SHAP)</div>', unsafe_allow_html=True)
+    st.caption("Each bar shows how much a feature pushed the prediction up (+) or down (−) from the baseline.")
 
     try:
-        prep_pipeline = model[:-1] if hasattr(model, '__getitem__') else \
-                        __import__('sklearn.pipeline', fromlist=['Pipeline']).Pipeline(model.steps[:-1])
-
         numerical_features = ['yr', 'holiday', 'workingday', 'weathersit',
-                             'temp', 'hum', 'windspeed',
-                             'hr_sin', 'hr_cos', 'mnth_sin', 'mnth_cos',
-                             'workingday_x_hr']
+                               'temp', 'hum', 'windspeed',
+                               'hr_sin', 'hr_cos', 'mnth_sin', 'mnth_cos',
+                               'workingday_x_hr']
         categorical_features = ['season', 'weekday']
 
         ct = model.named_steps['preprocessor']
@@ -175,15 +342,22 @@ if st.button("🔮 Predict demand", use_container_width=True, type="primary"):
             feature_names=feature_names
         )
 
-        fig, ax = plt.subplots(figsize=(10, 6))
+        plt.style.use('dark_background')
+        fig, ax = plt.subplots(figsize=(9, 5))
+        fig.patch.set_facecolor('#1a1d27')
         shap.plots.waterfall(explanation, max_display=10, show=False)
+        plt.gcf().set_facecolor('#1a1d27')
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
 
     except Exception as e:
-        st.warning(f"Could not generate SHAP plot: {e}")
+        st.warning(f"Could not render SHAP chart: {e}")
 
-# ── Footer ───────────────────────────────────────────────────────────────────
-st.divider()
-st.caption("MSc Machine Learning — Team 14 | Dataset: UCI Bike Sharing (Fanaee-T & Gama, 2014) | Model: XGBoost | R² = 0.9553")
+# ── Footer ─────────────────────────────────────────────────────────────────────
+st.markdown("""
+<div class="footer">
+    MSc Machine Learning · Team 14<br>
+    Dataset: UCI Bike Sharing — Fanaee-T &amp; Gama, 2014 · Model: XGBoost · R² = 0.9553
+</div>
+""", unsafe_allow_html=True)
