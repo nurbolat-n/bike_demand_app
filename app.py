@@ -260,10 +260,22 @@ with col9:
 
 st.markdown('<div class="section-label">Day Type</div>', unsafe_allow_html=True)
 col10, col11 = st.columns(2)
+
 with col10:
-    workingday = st.selectbox("Working day?", [1, 0], format_func=lambda x: "Yes" if x == 1 else "No (weekend / holiday)")
+    workingday = st.radio(
+        "Working day?",
+        options=[1, 0],
+        horizontal=True,
+        format_func=lambda x: "Yes" if x == 1 else "No"
+    )
+
 with col11:
-    holiday = st.selectbox("Public holiday?", [0, 1], format_func=lambda x: "No" if x == 0 else "Yes")
+    holiday = st.radio(
+        "Public holiday?",
+        options=[0, 1],
+        horizontal=True,
+        format_func=lambda x: "No" if x == 0 else "Yes"
+    )
 
 st.markdown("")  # small spacer
 
